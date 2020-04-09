@@ -1,0 +1,2 @@
+# j2eSubmodules-DroneManagemmentComponent
+DroneManagemment component j2e submodule
