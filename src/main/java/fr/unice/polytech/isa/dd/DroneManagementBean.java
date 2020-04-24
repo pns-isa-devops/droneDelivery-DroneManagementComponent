@@ -33,7 +33,7 @@ public class DroneManagementBean implements AvailableDrone,DroneRegister, drones
 
 
     @Override
-    public List<fr.unice.polytech.isa.dd.entities.DroneStatus> getAllHistoryDrone(int idDrone) {
+    public List<fr.unice.polytech.isa.dd.entities.DroneStatus> getAllHistoryDrone(String idDrone) {
         List<fr.unice.polytech.isa.dd.entities.DroneStatus> list_history = finddronestatus(idDrone);
         return  list_history;
     }
@@ -44,7 +44,7 @@ public class DroneManagementBean implements AvailableDrone,DroneRegister, drones
         for (fr.unice.polytech.isa.dd.entities.DroneStatus d : tout_status) {
             DRONE_STATES gv=d.getLibelleStatusDrone();
             if (gv==DRONE_STATES.AVAILABLE){
-                Drone f = findById(d.getDrone().getId());
+                Drone f = findById(d.getDrone().getDroneId());
                 int size = f.getStatusDrone().size();
                 fr.unice.polytech.isa.dd.entities.DroneStatus st= f.getStatusDrone().get(size);
                 this.all_drone_status.put(f,st);
@@ -59,7 +59,7 @@ public class DroneManagementBean implements AvailableDrone,DroneRegister, drones
         for (fr.unice.polytech.isa.dd.entities.DroneStatus d : tout_status) {
             DRONE_STATES gv=d.getLibelleStatusDrone();
             if (gv==DRONE_STATES.IN_LOADING){
-                Drone f = findById(d.getDrone().getId());
+                Drone f = findById(d.getDrone().getDroneId());
                 int size = f.getStatusDrone().size();
                 fr.unice.polytech.isa.dd.entities.DroneStatus st= f.getStatusDrone().get(size);
                 this.all_drone_loanding.put(f,st);
@@ -74,7 +74,7 @@ public class DroneManagementBean implements AvailableDrone,DroneRegister, drones
         for (fr.unice.polytech.isa.dd.entities.DroneStatus d : tout_status) {
             DRONE_STATES gv=d.getLibelleStatusDrone();
             if (gv==DRONE_STATES.BEING_REPAIRED){
-                Drone f = findById(d.getDrone().getId());
+                Drone f = findById(d.getDrone().getDroneId());
                 int size = f.getStatusDrone().size();
                 fr.unice.polytech.isa.dd.entities.DroneStatus st= f.getStatusDrone().get(size);
                 this.all_drone_fixing.put(f,st);
@@ -85,7 +85,7 @@ public class DroneManagementBean implements AvailableDrone,DroneRegister, drones
 
     @Override
     public void setStatut(DRONE_STATES states, Drone drone) throws Exception {
-        Drone new_drone = findById(drone.getId());
+        Drone new_drone = findById(drone.getDroneId());
         String localDate = LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
         int localTime = LocalTime.now().getHour();
         int localTime1 = LocalTime.now().getMinute();
@@ -97,8 +97,10 @@ public class DroneManagementBean implements AvailableDrone,DroneRegister, drones
     }
 
     @Override
-    public void register( int n_battery, int n_flightHours) throws Exception {
-        Drone new_drone= new Drone(n_battery,n_flightHours);
+    public Boolean register( int n_battery, int n_flightHours, String id) throws Exception {
+        Optional<Drone> d = finddrone(id);
+        if(d.isPresent()) return false;
+        Drone new_drone= new Drone(n_battery,n_flightHours, id);
         String localDate = LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
         int localTime = LocalTime.now().getHour();
         int localTime1 = LocalTime.now().getMinute();
@@ -108,7 +110,7 @@ public class DroneManagementBean implements AvailableDrone,DroneRegister, drones
         new_drone.addStatut(status);
         entityManager.persist(new_drone);
         entityManager.persist(status);
-
+        return true;
     }
 
     @Override
@@ -118,23 +120,23 @@ public class DroneManagementBean implements AvailableDrone,DroneRegister, drones
         for (fr.unice.polytech.isa.dd.entities.DroneStatus d : tout_status) {
             DRONE_STATES gv=d.getLibelleStatusDrone();
             if (gv==DRONE_STATES.AVAILABLE){
-                Drone f = findById(d.getDrone().getId());
+                Drone f = findById(d.getDrone().getDroneId());
                 availables.add(f);
             }
         }
         return availables;
     }
 
-    public Drone findById(int iddrone) {
-        Optional<Drone> drone =  finddrone( iddrone);
+    public Drone findById(String iddrone) {
+        Optional<Drone> drone =  finddrone(iddrone);
         return drone.orElse(null);
     }
 
-    public Optional<Drone> finddrone(int iddrone) {
+    public Optional<Drone> finddrone(String iddrone) {
         CriteriaBuilder builder = entityManager.getCriteriaBuilder();
         CriteriaQuery<Drone> criteria = builder.createQuery(Drone.class);
         Root<Drone> root =  criteria.from(Drone.class);
-        criteria.select(root).where(builder.equal(root.get("id"), iddrone));
+        criteria.select(root).where(builder.equal(root.get("droneId"), iddrone));
         TypedQuery<Drone> query = entityManager.createQuery(criteria);
         try {
             return Optional.of(query.getSingleResult());
@@ -143,11 +145,11 @@ public class DroneManagementBean implements AvailableDrone,DroneRegister, drones
         }
     }
 
-    public List<fr.unice.polytech.isa.dd.entities.DroneStatus> finddronestatus(int iddrone) {
+    public List<fr.unice.polytech.isa.dd.entities.DroneStatus> finddronestatus(String iddrone) {
         CriteriaBuilder builder = entityManager.getCriteriaBuilder();
         CriteriaQuery<fr.unice.polytech.isa.dd.entities.DroneStatus> criteria = builder.createQuery(fr.unice.polytech.isa.dd.entities.DroneStatus.class);
         Root<fr.unice.polytech.isa.dd.entities.DroneStatus> root =  criteria.from(fr.unice.polytech.isa.dd.entities.DroneStatus.class);
-        criteria.select(root).where(builder.equal(root.get("drone_id"), iddrone));
+        criteria.select(root).where(builder.equal(root.get("droneId"), iddrone));
         TypedQuery<fr.unice.polytech.isa.dd.entities.DroneStatus> query = entityManager.createQuery(criteria);
         try {
             List<fr.unice.polytech.isa.dd.entities.DroneStatus> toReturn = new ArrayList<>(query.getResultList());

@@ -1,5 +1,8 @@
 package fr.unice.polytech.isa.dd;
 
+import javax.ejb.Local;
+
+@Local
 public interface DroneRegister {
-    void register(int n_battery, int  n_flightHours) throws Exception;
+    Boolean register(int n_battery, int  n_flightHours, String id) throws Exception;
 }
