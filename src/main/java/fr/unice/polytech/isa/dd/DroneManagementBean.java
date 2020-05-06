@@ -16,133 +16,85 @@ import javax.persistence.criteria.Root;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 @Stateless(name="drone-stateless")
-public class DroneManagementBean implements AvailableDrone,DroneRegister, dronestatus {
+public class DroneManagementBean implements AvailableDrone,DroneRegister, DroneStatusInterface {
 
     @PersistenceContext
     private EntityManager entityManager;
 
-    HashMap<Drone, DroneStatus> all_drone_status = new HashMap<>();
-    HashMap<Drone, DroneStatus> all_drone_loanding = new HashMap<>();
-    HashMap<Drone, DroneStatus> all_drone_fixing = new HashMap<>();
-
-
+    HashMap<Drone, DroneStatus> last_drone_status = new HashMap<>();
 
     @Override
-    public List<DroneStatus> getAllHistoryDrone(String idDrone) {
-        List<DroneStatus> list_history = finddronestatus(idDrone);
-        return  list_history;
+    public List<DroneStatus> historyDrone(String idDrone) {
+        return findDroneById(idDrone).getStatusDrone();
     }
 
     @Override
-    public HashMap<Drone, DroneStatus> getallstatus() {
-        List<DroneStatus> tout_status= get_allStatus();
-        for (DroneStatus d : tout_status) {
-            DRONE_STATES gv=d.getLibelleStatusDrone();
-            if (gv==DRONE_STATES.AVAILABLE){
-                Drone f = findById(d.getDrone().getDroneId());
-                int size = f.getStatusDrone().size();
-                DroneStatus st= f.getStatusDrone().get(size);
-                this.all_drone_status.put(f,st);
-            }
+    public HashMap<Drone, DroneStatus> lastStatusDrone() {
+        List<Drone> alldrone = allDrones();
+        for (Drone drone:alldrone) {
+            int size = drone.getStatusDrone().size();
+            last_drone_status.put(drone,drone.getStatusDrone().get(size - 1));
         }
-        return all_drone_status;
+        return last_drone_status;
     }
 
     @Override
-    public HashMap<Drone, DroneStatus> getAllLoadingDrone() {
-        List<DroneStatus> tout_status= get_allStatus();
-        for (DroneStatus d : tout_status) {
-            DRONE_STATES gv=d.getLibelleStatusDrone();
-            if (gv==DRONE_STATES.IN_LOADING){
-                Drone f = findById(d.getDrone().getDroneId());
-                int size = f.getStatusDrone().size();
-                DroneStatus st= f.getStatusDrone().get(size);
-                this.all_drone_loanding.put(f,st);
-            }
-        }
-        return all_drone_loanding;
-    }
-
-    @Override
-    public HashMap<Drone, DroneStatus> getAllFixingDrone() {
-        List<DroneStatus> tout_status= get_allStatus();
-        for (DroneStatus d : tout_status) {
-            DRONE_STATES gv=d.getLibelleStatusDrone();
-            if (gv==DRONE_STATES.BEING_REPAIRED){
-                Drone f = findById(d.getDrone().getDroneId());
-                int size = f.getStatusDrone().size();
-                DroneStatus st= f.getStatusDrone().get(size);
-                this.all_drone_fixing.put(f,st);
-            }
-        }
-        return all_drone_fixing;
-    }
-
-    @Override
-    public void setStatut(DRONE_STATES states, Drone drone) throws Exception {
-        Drone new_drone = findById(drone.getDroneId());
-        String localDate = LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
-        int localTime = LocalTime.now().getHour();
-        int localTime1 = LocalTime.now().getMinute();
-        String hour = ""+localTime+"h"+localTime1;
-        MyDate dt = new MyDate(localDate,hour);
-        DroneStatus status= new DroneStatus(new_drone,states,dt.toString());
-        new_drone.addStatut(status);
-        entityManager.persist(status);
-    }
-
-    @Override
-    public Boolean register( int n_battery, int n_flightHours, String id) throws Exception {
-        Optional<Drone> d = finddrone(id);
-        if(d.isPresent()) return false;
-        Drone new_drone= new Drone(n_battery,n_flightHours, id);
-        System.out.println("okki 1");
-        String localDate = LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
-        int localTime = LocalTime.now().getHour();
-        int localTime1 = LocalTime.now().getMinute();
-        String hour = ""+localTime+"h"+localTime1;
-        MyDate dt = new MyDate(localDate,hour);
-        DroneStatus status= new DroneStatus(new_drone,DRONE_STATES.AVAILABLE,dt.toString());
-        System.out.println("okki 2");
-
-        entityManager.persist(status);
-        System.out.println("okki 3");
-
+    public void changeStatus(DRONE_STATES states, Drone drone, String date, String hour) throws java.text.ParseException {
+        Drone new_drone = findDroneById(drone.getDroneId());
+        entityManager.refresh(new_drone);
+        MyDate dt = new MyDate(date,hour);
+        DroneStatus status= new DroneStatus(states,dt.toString());
         new_drone.addStatut(status);
         entityManager.persist(new_drone);
+    }
 
-        System.out.println("okki 4");
-
-        //entityManager.persist(new_drone);
+    @Override
+    public Boolean register(String drone_id, String date, String hour) throws java.text.ParseException {
+        Optional<Drone> d = finddroneByIdInDatabase(drone_id);
+        if(d.isPresent()) return false;
+        int n_battery = 12;
+        int n_flightHours = 0;
+        Drone new_drone= new Drone(n_battery, n_flightHours, drone_id);
+        MyDate myDate = new MyDate(date, hour);
+        DroneStatus status= new DroneStatus(DRONE_STATES.AVAILABLE,myDate.toString());
+        new_drone.addStatut(status);
+        entityManager.persist(new_drone);
         return true;
     }
 
     @Override
-    public List<Drone> getAllDroneAvailable() {
-        List<DroneStatus> tout_status= get_allStatus();
-        List<Drone> availables = null;
-        for (DroneStatus d : tout_status) {
-            DRONE_STATES gv=d.getLibelleStatusDrone();
-            if (gv==DRONE_STATES.AVAILABLE){
-                Drone f = findById(d.getDrone().getDroneId());
-                availables.add(f);
-            }
+    public List<Drone> allDrones(){
+        CriteriaBuilder builder = entityManager.getCriteriaBuilder();
+        CriteriaQuery<Drone> criteria = builder.createQuery(Drone.class);
+        Root<Drone> root =  criteria.from(Drone.class);
+        criteria.select(root);
+        TypedQuery<Drone> query = entityManager.createQuery(criteria);
+        try {
+            List<Drone> toReturn = new ArrayList<>(query.getResultList());
+            return Optional.of(toReturn).get();
+        } catch (NoResultException nre){
+            return null;
+        }
+    }
+
+    @Override
+    public List<Drone> allDroneAvailable() {
+        List<Drone> availables = new ArrayList<>();
+        for( Map.Entry<Drone, DroneStatus> entry : lastStatusDrone().entrySet() ){
+            if(entry.getValue().getLibelleStatusDrone().equals(DRONE_STATES.AVAILABLE)) availables.add(entry.getKey());
         }
         return availables;
     }
 
-    public Drone findById(String iddrone) {
-        Optional<Drone> drone =  finddrone(iddrone);
+    private Drone findDroneById(String iddrone) {
+        Optional<Drone> drone =  finddroneByIdInDatabase(iddrone);
         return drone.orElse(null);
     }
 
-    public Optional<Drone> finddrone(String iddrone) {
+    private Optional<Drone> finddroneByIdInDatabase(String iddrone) {
         CriteriaBuilder builder = entityManager.getCriteriaBuilder();
         CriteriaQuery<Drone> criteria = builder.createQuery(Drone.class);
         Root<Drone> root =  criteria.from(Drone.class);
@@ -152,34 +104,6 @@ public class DroneManagementBean implements AvailableDrone,DroneRegister, drones
             return Optional.of(query.getSingleResult());
         } catch (NoResultException nre){
             return Optional.empty();
-        }
-    }
-
-    public List<DroneStatus> finddronestatus(String iddrone) {
-        CriteriaBuilder builder = entityManager.getCriteriaBuilder();
-        CriteriaQuery<DroneStatus> criteria = builder.createQuery(DroneStatus.class);
-        Root<DroneStatus> root =  criteria.from(DroneStatus.class);
-        criteria.select(root).where(builder.equal(root.get("droneId"), iddrone));
-        TypedQuery<DroneStatus> query = entityManager.createQuery(criteria);
-        try {
-            List<DroneStatus> toReturn = new ArrayList<>(query.getResultList());
-            return Optional.of(toReturn).get();
-        } catch (NoResultException nre){
-            return null;
-        }
-    }
-
-    public List<DroneStatus> get_allStatus(){
-        CriteriaBuilder builder = entityManager.getCriteriaBuilder();
-        CriteriaQuery<DroneStatus> criteria = builder.createQuery(DroneStatus.class);
-        Root<DroneStatus> root =  criteria.from(DroneStatus.class);
-        criteria.select(root);
-        TypedQuery<DroneStatus> query = entityManager.createQuery(criteria);
-        try {
-            List<DroneStatus> toReturn = new ArrayList<>(query.getResultList());
-            return Optional.of(toReturn).get();
-        } catch (NoResultException nre){
-            return null;
         }
     }
 }

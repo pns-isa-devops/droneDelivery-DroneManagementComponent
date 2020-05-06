@@ -7,5 +7,6 @@ import java.util.List;
 
 @Local
 public interface AvailableDrone {
-    List<Drone> getAllDroneAvailable();
+
+    List<Drone> allDroneAvailable();
 }
