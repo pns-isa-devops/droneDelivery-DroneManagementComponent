@@ -34,9 +34,15 @@ public class DroneManagementBean implements AvailableDrone, DroneRegister, Drone
     @Override
     public HashMap<Drone, DroneStatus> lastStatusDrone() {
         List<Drone> alldrone = allDrones();
+        last_drone_status = new HashMap<>();
         for (Drone drone : alldrone) {
             int size = drone.getStatusDrone().size();
-            System.out.println("Size "+size);
+//            System.out.println("Size " + size);
+//            for (DroneStatus p : drone.getStatusDrone()
+//            ) {
+//                System.out.println("Statut " + p.getLibelleStatusDrone());
+//            }
+//            System.out.println("Status " + drone.getStatusDrone().get(0));
             last_drone_status.put(drone, drone.getStatusDrone().get(size - 1));
         }
         return last_drone_status;
