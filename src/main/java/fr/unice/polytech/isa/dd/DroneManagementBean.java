@@ -18,8 +18,8 @@ import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
-@Stateless(name="drone-stateless")
-public class DroneManagementBean implements AvailableDrone,DroneRegister, DroneStatusInterface {
+@Stateless(name = "drone-stateless")
+public class DroneManagementBean implements AvailableDrone, DroneRegister, DroneStatusInterface {
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -34,19 +34,20 @@ public class DroneManagementBean implements AvailableDrone,DroneRegister, DroneS
     @Override
     public HashMap<Drone, DroneStatus> lastStatusDrone() {
         List<Drone> alldrone = allDrones();
-        for (Drone drone:alldrone) {
+        for (Drone drone : alldrone) {
             int size = drone.getStatusDrone().size();
-            last_drone_status.put(drone,drone.getStatusDrone().get(size - 1));
+            System.out.println("Size "+size);
+            last_drone_status.put(drone, drone.getStatusDrone().get(size - 1));
         }
         return last_drone_status;
     }
 
     @Override
     public void changeStatus(DRONE_STATES states, Drone drone, String date, String hour) throws java.text.ParseException {
-        Drone new_drone = findDroneById(drone.getDroneId());
-        entityManager.refresh(new_drone);
-        MyDate dt = new MyDate(date,hour);
-        DroneStatus status= new DroneStatus(states,dt.toString());
+        Drone new_drone = entityManager.find(Drone.class, drone.getId());
+//        entityManager.refresh(new_drone);
+        MyDate dt = new MyDate(date, hour);
+        DroneStatus status = new DroneStatus(states, dt.toString());
         new_drone.addStatut(status);
         entityManager.persist(new_drone);
     }
@@ -54,28 +55,28 @@ public class DroneManagementBean implements AvailableDrone,DroneRegister, DroneS
     @Override
     public Boolean register(String drone_id, String date, String hour) throws java.text.ParseException {
         Optional<Drone> d = finddroneByIdInDatabase(drone_id);
-        if(d.isPresent()) return false;
+        if (d.isPresent()) return false;
         int n_battery = 12;
         int n_flightHours = 0;
-        Drone new_drone= new Drone(n_battery, n_flightHours, drone_id);
+        Drone new_drone = new Drone(n_battery, n_flightHours, drone_id);
         MyDate myDate = new MyDate(date, hour);
-        DroneStatus status= new DroneStatus(DRONE_STATES.AVAILABLE,myDate.toString());
+        DroneStatus status = new DroneStatus(DRONE_STATES.AVAILABLE, myDate.toString());
         new_drone.addStatut(status);
         entityManager.persist(new_drone);
         return true;
     }
 
     @Override
-    public List<Drone> allDrones(){
+    public List<Drone> allDrones() {
         CriteriaBuilder builder = entityManager.getCriteriaBuilder();
         CriteriaQuery<Drone> criteria = builder.createQuery(Drone.class);
-        Root<Drone> root =  criteria.from(Drone.class);
+        Root<Drone> root = criteria.from(Drone.class);
         criteria.select(root);
         TypedQuery<Drone> query = entityManager.createQuery(criteria);
         try {
             List<Drone> toReturn = new ArrayList<>(query.getResultList());
             return Optional.of(toReturn).get();
-        } catch (NoResultException nre){
+        } catch (NoResultException nre) {
             return null;
         }
     }
@@ -83,26 +84,26 @@ public class DroneManagementBean implements AvailableDrone,DroneRegister, DroneS
     @Override
     public List<Drone> allDroneAvailable() {
         List<Drone> availables = new ArrayList<>();
-        for( Map.Entry<Drone, DroneStatus> entry : lastStatusDrone().entrySet() ){
-            if(entry.getValue().getLibelleStatusDrone().equals(DRONE_STATES.AVAILABLE)) availables.add(entry.getKey());
+        for (Map.Entry<Drone, DroneStatus> entry : lastStatusDrone().entrySet()) {
+            if (entry.getValue().getLibelleStatusDrone().equals(DRONE_STATES.AVAILABLE)) availables.add(entry.getKey());
         }
         return availables;
     }
 
     private Drone findDroneById(String iddrone) {
-        Optional<Drone> drone =  finddroneByIdInDatabase(iddrone);
+        Optional<Drone> drone = finddroneByIdInDatabase(iddrone);
         return drone.orElse(null);
     }
 
     private Optional<Drone> finddroneByIdInDatabase(String iddrone) {
         CriteriaBuilder builder = entityManager.getCriteriaBuilder();
         CriteriaQuery<Drone> criteria = builder.createQuery(Drone.class);
-        Root<Drone> root =  criteria.from(Drone.class);
+        Root<Drone> root = criteria.from(Drone.class);
         criteria.select(root).where(builder.equal(root.get("droneId"), iddrone));
         TypedQuery<Drone> query = entityManager.createQuery(criteria);
         try {
             return Optional.of(query.getSingleResult());
-        } catch (NoResultException nre){
+        } catch (NoResultException nre) {
             return Optional.empty();
         }
     }
