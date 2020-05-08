@@ -88,6 +88,16 @@ public class DroneManagementBean implements AvailableDrone, DroneRegister, Drone
     }
 
     @Override
+    public Boolean deleteAll() {
+        //   recupérer tous les clients
+        List<Drone> allD = allDrones();
+        for (Drone c : allD) {
+            entityManager.remove(c);
+        }
+        return true;
+    }
+
+    @Override
     public List<Drone> allDroneAvailable() {
         List<Drone> availables = new ArrayList<>();
         for (Map.Entry<Drone, DroneStatus> entry : lastStatusDrone().entrySet()) {

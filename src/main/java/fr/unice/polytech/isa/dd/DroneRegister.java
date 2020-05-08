@@ -11,5 +11,5 @@ public interface DroneRegister {
 
     Boolean register(String drone_id, String date, String hour) throws ParseException;
     List<Drone> allDrones ();
-
+    Boolean deleteAll();
 }
