@@ -13,6 +13,7 @@ import javax.persistence.TypedQuery;
 import javax.persistence.criteria.CriteriaBuilder;
 import javax.persistence.criteria.CriteriaQuery;
 import javax.persistence.criteria.Root;
+import java.text.ParseException;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
@@ -44,10 +45,23 @@ public class DroneManagementBean implements AvailableDrone,DroneRegister, DroneS
     @Override
     public void changeStatus(DRONE_STATES states, Drone drone, String date, String hour) throws java.text.ParseException {
         Drone new_drone = findDroneById(drone.getDroneId());
-        entityManager.refresh(new_drone);
         MyDate dt = new MyDate(date,hour);
         DroneStatus status= new DroneStatus(states,dt.toString());
+        if(states == DRONE_STATES.AVAILABLE) new_drone.setBattery(0.0);
+        if(states == DRONE_STATES.BEING_REPAIRED) new_drone.setFlightHours(0.0);
         new_drone.addStatut(status);
+        entityManager.persist(new_drone);
+    }
+
+    @Override
+    public void UpdtateAttributsDrone(Drone drone, double batteryUsed, String date, String hour) throws ParseException {
+        Drone new_drone = findDroneById(drone.getDroneId());
+        new_drone.reduceBatteryLife(batteryUsed);
+        double flighthoursdone = new_drone.getFlightHours();
+        double batteryLife = new_drone.getBatteryLife();
+        MyDate dt = new MyDate(date,hour);
+        if(batteryLife < 0.45) new_drone.addStatut(new DroneStatus(DRONE_STATES.IN_LOADING, dt.toString()));
+        if(flighthoursdone >= 21) new_drone.addStatut(new DroneStatus(DRONE_STATES.BEING_REPAIRED, dt.toString()));
         entityManager.persist(new_drone);
     }
 
@@ -55,9 +69,7 @@ public class DroneManagementBean implements AvailableDrone,DroneRegister, DroneS
     public Boolean register(String drone_id, String date, String hour) throws java.text.ParseException {
         Optional<Drone> d = finddroneByIdInDatabase(drone_id);
         if(d.isPresent()) return false;
-        int n_battery = 12;
-        int n_flightHours = 0;
-        Drone new_drone= new Drone(n_battery, n_flightHours, drone_id);
+        Drone new_drone= new Drone(drone_id);
         MyDate myDate = new MyDate(date, hour);
         DroneStatus status= new DroneStatus(DRONE_STATES.AVAILABLE,myDate.toString());
         new_drone.addStatut(status);
